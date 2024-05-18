@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "scripts/": "./assets/scripts/",
+    "prefabs/": "./assets/prefabs/"
+  }
+}

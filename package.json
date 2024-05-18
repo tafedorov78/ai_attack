@@ -1,0 +1,17 @@
+{
+  "name": "NewProject",
+  "uuid": "02647992-0a2e-4cad-a95b-e14b28d52ef9",
+  "creator": {
+    "version": "3.8.2",
+    "registry": {
+      "remote": {}
+    },
+    "dependencies": {
+      "localization-editor": "1.0.1"
+    }
+  },
+  "dependencies": {
+    "xmldom": "^0.6.0",
+    "xpath": "^0.0.34"
+  }
+}
