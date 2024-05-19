@@ -1,35 +1,68 @@
-import { _decorator, Component, Vec2 } from 'cc';
+import { _decorator, CCString, Component, Vec2 } from 'cc';
 import Facade from 'scripts/Facade';
 import { Draggable } from 'scripts/draggable/Draggable';
-import { aStar, Point } from 'scripts/pathFinder/Astar';
-import { MovingAction } from './MovingAction';
+import { aStar, PathPoint } from 'scripts/pathFinder/Astar';
 import GameSettings from 'scripts/settings/GameSettings';
+import { MovementController } from './MovementController';
+import { GlobalState } from './GlobalState';
 const { ccclass, property } = _decorator;
-
-export interface InputInterface {
-    getStartPoint(callback: Function): void;
-    getFinishPoint(callback: Function): void;
-}
 
 @ccclass('PlayerComponent')
 export class PlayerComponent extends Component {
 
-    private startPoint: Point = null;
-    private endPoint: Point = null;
-    private path: Point[] = null;
+    private startPoint: PathPoint = null;
+    private endPoint: PathPoint = null;
+    private path: PathPoint[] = null;
+
+    private draggableController: Draggable;
+    private movementController: MovementController;
 
     protected onLoad(): void {
-        this.getComponent(Draggable).isMoving = false;
-        this.getComponent(Draggable) && this.getComponent(Draggable).setStartCallback(this.onStart);
-        this.getComponent(Draggable) && this.getComponent(Draggable).setEndCallback(this.onEnd);
+        this.draggableController = this.getComponent(Draggable);
+        this.movementController = this.getComponent(MovementController);
+
+        this.draggableController.setStartCallback(this.onStart);
+        this.draggableController.setEndCallback(this.onEnd);
+        this.movementController.setOnComplete(this.onCompleteMove);
     }
 
     public onStart = (point: Vec2): void => {
-        const i: number = Math.trunc(point.y / GameSettings.TILE_SIZE);
-        const j: number = Math.trunc(point.x / GameSettings.TILE_SIZE);
-        console.log('onStart', i, j);
+        this.startPoint = this.vec2ToPathPoint(point);
+    }
+    
+    public onEnd = (point: Vec2): void => {
+        if(!this.startPoint) return;
+        this.endPoint = this.vec2ToPathPoint(point);
+        this.move(this.startPoint, this.endPoint)
+    }
 
-        this.startPoint = {
+    public onCompleteMove = (wasSuccessed: boolean, lastPoint: PathPoint): void => {
+        console.log(lastPoint);
+        if(wasSuccessed) {
+            
+            return;
+        }
+        this.move(lastPoint, this.endPoint)
+    }
+
+    private move(start: PathPoint, end: PathPoint) {
+        this.path = this.findPath(start, end);
+        
+        if(this.path) {
+            console.log(this.path);
+            this.movementController.startMove(this.path, this.startPoint);
+            this.startPoint = null;
+        }
+    }
+    
+    private findPath = (start: PathPoint, end: PathPoint): PathPoint[] => {
+        return aStar(Facade.Grid, start, end, GlobalState.blockers);
+    }
+    
+    private vec2ToPathPoint = (vec: Vec2): PathPoint => {
+        const i: number = Math.trunc(vec.y / GameSettings.TILE_SIZE);
+        const j: number = Math.trunc(vec.x / GameSettings.TILE_SIZE);
+        return {
             i: i,
             j: j,
             cost: 0,
@@ -37,25 +70,6 @@ export class PlayerComponent extends Component {
             total: 0
         } ; 
     }
-    
-    public onEnd = (point: Vec2): void => {
-        const i: number = Math.trunc(point.y / GameSettings.TILE_SIZE);
-        const j: number = Math.trunc(point.x / GameSettings.TILE_SIZE);
-        console.log('onEnd', i, j);
-
-        this.path = this.findPath({i: this.startPoint.i, j: this.startPoint.j, cost: 0, heuristic: 0, total: 0}, {i: i, j: j, cost: 0, heuristic: 0, total: 0});
-        if(this.path) {
-            console.log(this.path);
-            this.node.getComponent(MovingAction).move(this.path, this.node);
-        }
-    }
-
-    private findPath = (start: Point, end: Point): Point[] => {
-        const walkableCodes = new Set<number>([52,51,50]);
-        return aStar(Facade.Grid, start, end, walkableCodes);
-    }
-
-    
 
 }
 

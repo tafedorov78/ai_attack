@@ -1,16 +1,16 @@
-export type Point = {
+export type PathPoint = {
     i: number;  // Row index (vertical)
     j: number;  // Column index (horizontal)
     cost: number;
     heuristic: number;
     total: number;
-    parent?: Point;
+    parent?: PathPoint;
 };
 
-export function aStar(grid: number[][], start: Point, goal: Point, walkableCodes: Set<number>): Point[] | null {
-    const openSet: Point[] = [start];
+export function aStar(grid: number[][], start: PathPoint, goal: PathPoint, blockedCodes: Set<number>): PathPoint[] | null {
+    const openSet: PathPoint[] = [start];
     const closedSet: Set<string> = new Set();
-    const createKey = (p: Point) => `${p.i},${p.j}`;
+    const createKey = (p: PathPoint) => `${p.i},${p.j}`;
 
     start.total = start.heuristic;
 
@@ -24,7 +24,7 @@ export function aStar(grid: number[][], start: Point, goal: Point, walkableCodes
 
         closedSet.add(createKey(current));
 
-        getNeighbors(grid, current, goal, walkableCodes).forEach(neighbor => {
+        getNeighbors(grid, current, goal, blockedCodes).forEach(neighbor => {
             if (closedSet.has(createKey(neighbor))) return;
 
             const tentativeCost = current.cost + ((neighbor.i !== current.i && neighbor.j !== current.j) ? 1.414 : 1); // Diagonal move cost is √2 (approximated as 1.414)
@@ -46,8 +46,8 @@ export function aStar(grid: number[][], start: Point, goal: Point, walkableCodes
     return null;
 }
 
-function getNeighbors(grid: number[][], node: Point, goal: Point, walkableCodes: Set<number>): Point[] {
-    const neighbors: Point[] = [];
+function getNeighbors(grid: number[][], node: PathPoint, goal: PathPoint, blockedCodes: Set<number>): PathPoint[] {
+    const neighbors: PathPoint[] = [];
     const directions = [
         [0, 1], [1, 0], [0, -1], [-1, 0], // right, down, left, up
         [1, 1], [1, -1], [-1, -1], [-1, 1] // diagonal directions
@@ -57,11 +57,11 @@ function getNeighbors(grid: number[][], node: Point, goal: Point, walkableCodes:
         const i = node.i + di;
         const j = node.j + dj;
 
-        if (i >= 0 && i < grid.length && j >= 0 && j < grid[i].length && walkableCodes.has(grid[i][j])) {
+        if (i >= 0 && i < grid.length && j >= 0 && j < grid[i].length && !blockedCodes.has(grid[i][j])) {
             // For diagonal moves, ensure that both adjacent horizontal and vertical cells are also walkable
             if ((di === 1 || di === -1) && (dj === 1 || dj === -1)) {
-                const isHorizontalClear = walkableCodes.has(grid[node.i][node.j + dj]);
-                const isVerticalClear = walkableCodes.has(grid[node.i + di][node.j]);
+                const isHorizontalClear = !blockedCodes.has(grid[node.i][node.j + dj]);
+                const isVerticalClear = !blockedCodes.has(grid[node.i + di][node.j]);
                 if (!isHorizontalClear || !isVerticalClear) {
                     return;
                 }
@@ -79,8 +79,8 @@ function getNeighbors(grid: number[][], node: Point, goal: Point, walkableCodes:
     return neighbors;
 }
 
-function reconstructPath(current: Point): Point[] {
-    let path: Point[] = [];
+function reconstructPath(current: PathPoint): PathPoint[] {
+    let path: PathPoint[] = [];
     while (current) {
         path.push(current);
         current = current.parent!;

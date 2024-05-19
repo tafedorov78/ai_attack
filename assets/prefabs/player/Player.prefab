@@ -157,10 +157,10 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "c7PoLRVqxAsopIcMAGpyLA"
+    "fileId": "f6anj1vUtCAYifdkkJnHBZ"
   },
   {
-    "__type__": "3e21emmWtxK35S512zQGode",
+    "__type__": "89b44THhhNHk4LfhVPvM9ag",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -175,10 +175,10 @@
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "aeMWUM0kVGMozan7e5tPdT"
+    "fileId": "24rQGBgxBFIKRbFxsa9urw"
   },
   {
-    "__type__": "89b44THhhNHk4LfhVPvM9ag",
+    "__type__": "3e21emmWtxK35S512zQGode",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -189,11 +189,13 @@
     "__prefab": {
       "__id__": 11
     },
+    "speed": 200,
+    "playerId": 0,
     "_id": ""
   },
   {
     "__type__": "cc.CompPrefabInfo",
-    "fileId": "24rQGBgxBFIKRbFxsa9urw"
+    "fileId": "aeMWUM0kVGMozan7e5tPdT"
   },
   {
     "__type__": "cc.PrefabInfo",
