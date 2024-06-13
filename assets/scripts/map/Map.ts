@@ -1,6 +1,5 @@
 import { Component, TiledMap, _decorator } from 'cc';
-import Facade from 'scripts/Facade';
-import { GlobalState } from 'scripts/player/GlobalState';
+import { GlobalState } from 'scripts/settings/GlobalState';
 
 const { ccclass, property } = _decorator;
 
@@ -17,9 +16,10 @@ export class Map extends Component {
 
     protected onLoad(): void {
         this.tileMap = this.node.getComponent(TiledMap);
-       Facade.Grid = this.flipArrayVertically(this.parseMapFromXml(this.tileMap._tmxFile.tmxXmlStr));
-
-       console.log(Facade.Grid);
+        GlobalState.Grid = this.flipArrayVertically(this.parseMapFromXml(this.tileMap._tmxFile.tmxXmlStr));
+        GlobalState.blockers.add(48);
+        GlobalState.blockers.add(0);
+        console.log(GlobalState.Grid);
     }
 
    parseMapFromXml(xmlData: string): number[][] {
@@ -32,7 +32,6 @@ export class Map extends Component {
         const dataNode = result.singleNodeValue;
         
         if (!dataNode || !dataNode.textContent) {
-            console.error('Элемент <data> не найден или пуст');
             return [];
         }
 

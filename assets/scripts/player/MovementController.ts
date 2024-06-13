@@ -1,66 +1,71 @@
-// assets/scripts/MovementController.ts
-import { Component, Vec2, Vec3, _decorator, v2, v3 } from 'cc';
-import { PathPoint } from 'scripts/pathFinder/Astar';
-import { GlobalState } from './GlobalState';
+import { CCInteger, Component, Vec3, _decorator, v3 } from 'cc';
+import { PathPoint } from 'scripts/libs/path-finder/Astar';
 import GameSettings from 'scripts/settings/GameSettings';
+import { GlobalState } from '../settings/GlobalState';
 const { ccclass, property } = _decorator;
 
 @ccclass('MovementController')
 export class MovementController extends Component {
-    @property
-    speed: number = 2;
-
-    @property
-    playerId: number = 0;
     
+    @property({type: CCInteger})
+    speed: number = 2;
+    
+    @property({type: CCInteger})
+    BLOCKING_TIMES: number = 2;
+
     private path: PathPoint[];
     private nextPoint: PathPoint;
+    private nextPlus1Point: PathPoint;
     private nextPosition: Vec3;
     private currentStepIndex: number = 0;
     private isMoving: boolean = false;
     private blockingCounter: number = 0;
+    private playerId: number = 0;
 
     public onComplete: Function;
 
+    public setPlayerId(id: number): void {
+        this.playerId = id;
+    }
     
-    startMove(path: PathPoint[], startPoint: PathPoint) {
+    public startMove(path: PathPoint[], startPoint: PathPoint) {
         this.path = path;
-        this.currentStepIndex = 0;
-        GlobalState.playerPositions.set(this.playerId, startPoint);
+        this.currentStepIndex = -1;
+        this.updatePlayerPosition(this.playerId, startPoint);
         this.nextStep();
         this.schedule(this.updateMovement, 0.01);
-
     }
 
     private nextStep() {
-        if(this.currentStepIndex < this.path.length) {
-            this.nextPoint = this.path[this.currentStepIndex];
-            this.nextPosition = v3(this.nextPoint.j * GameSettings.TILE_SIZE, this.nextPoint.i * GameSettings.TILE_SIZE, 1);
-             
-            console.log(this.currentStepIndex, 'move to: ',this.nextPoint, this.nextPosition);
+        if(this.currentStepIndex + 1 <= this.path.length - 1) {
             this.currentStepIndex++;
+            this.nextPoint = this.path[this.currentStepIndex];
+            this.nextPlus1Point = this.currentStepIndex + 1 <= this.path.length - 1 ? this.path[this.currentStepIndex + 1] : null;
+            this.nextPosition = v3(this.nextPoint.j * GameSettings.TILE_SIZE, this.nextPoint.i * GameSettings.TILE_SIZE, 1);
         } else {
-            this.moveCompleted(true, this.path[this.currentStepIndex - 1]);
+            this.moveCompleted(true, this.path[this.currentStepIndex > 0 ? this.currentStepIndex - 1 : 0]);
         }
         this.isMoving = true;
     }
 
     protected updateMovement(): void {
-         if (!this.isMoving) {
+        if (!this.isMoving) {
             return;
         }
         const currentPosition = this.node.getPosition();
 
-        if (this.isCollidingWithOtherPlayers(this.nextPoint)) {
+        const p = this.nextPlus1Point || this.nextPoint;
+        
+        if (this.isCollidingWithOtherPlayers(p)) {
             this.blockingCounter++;
-            if(this.blockingCounter > GameSettings.MAX_BLOCKING_TIMES) {
+            if(this.blockingCounter > this.BLOCKING_TIMES) {
                 this.isMoving = false;
-                this.moveCompleted(false, this.path[this.currentStepIndex - 1]);
+                this.moveCompleted(false, this.path[this.currentStepIndex > 0 ? this.currentStepIndex - 1 : 0]);
             }
             return; 
         }
         this.blockingCounter = 0;
-        GlobalState.playerPositions.set(this.playerId, this.nextPoint);
+        this.updatePlayerPosition(this.playerId, this.nextPoint);
         const dx = this.nextPosition.x - currentPosition.x;
         const dy = this.nextPosition.y - currentPosition.y;
         const angle = Math.atan2(dy, dx);
@@ -77,7 +82,11 @@ export class MovementController extends Component {
         } 
     }
 
-    isCollidingWithOtherPlayers(targetPosition: PathPoint): boolean {
+    private updatePlayerPosition(playerId, point: PathPoint) {
+        GlobalState.playerPositions.set(playerId, point);
+    }
+
+    private isCollidingWithOtherPlayers(targetPosition: PathPoint): boolean {
         for (let [playerId, position] of GlobalState.playerPositions) {
             if (playerId !== this.playerId && position.i === targetPosition.i && position.j === targetPosition.j) {
                 return true;

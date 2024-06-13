@@ -1,62 +1,90 @@
-import { _decorator, CCString, Component, Vec2 } from 'cc';
-import Facade from 'scripts/Facade';
+import { _decorator, CCBoolean, Component, Vec2 } from 'cc';
 import { Draggable } from 'scripts/draggable/Draggable';
-import { aStar, PathPoint } from 'scripts/pathFinder/Astar';
+import { aStar, PathPoint } from 'scripts/libs/path-finder/Astar';
 import GameSettings from 'scripts/settings/GameSettings';
+import { GlobalState } from '../settings/GlobalState';
 import { MovementController } from './MovementController';
-import { GlobalState } from './GlobalState';
 const { ccclass, property } = _decorator;
 
 @ccclass('PlayerComponent')
 export class PlayerComponent extends Component {
-
+    
+    @property
+    playerId: number = 0;
+    
+    @property({type: CCBoolean})
+    avoidObstacles: boolean = true;
+    
     private startPoint: PathPoint = null;
     private endPoint: PathPoint = null;
     private path: PathPoint[] = null;
 
-    private draggableController: Draggable;
-    private movementController: MovementController;
+    private isAllowed: boolean = false;
+    private isEditing: boolean = false;
 
     protected onLoad(): void {
-        this.draggableController = this.getComponent(Draggable);
-        this.movementController = this.getComponent(MovementController);
+        this.getComponent(Draggable).isMoving = false;
+        this.getComponent(Draggable).setStartCallback(this.onStart);
+        this.getComponent(Draggable).setEndCallback(this.onEnd);
+        this.getComponent(MovementController).setPlayerId(this.playerId);
+        this.getComponent(MovementController).setOnComplete(this.onCompleteMove);
+    }
 
-        this.draggableController.setStartCallback(this.onStart);
-        this.draggableController.setEndCallback(this.onEnd);
-        this.movementController.setOnComplete(this.onCompleteMove);
+    public allow(value: boolean) {
+        this.isAllowed = value;
+    }
+
+    private reset(): void {
+        this.startPoint = null;
+        this.endPoint = null;
     }
 
     public onStart = (point: Vec2): void => {
+        if(!this.isAllowed) return;
+        this.isEditing = true;
         this.startPoint = this.vec2ToPathPoint(point);
-    }
+     }
     
     public onEnd = (point: Vec2): void => {
-        if(!this.startPoint) return;
+        if (!this.isAllowed || !this.isEditing) return;
+        this.isEditing = false;
         this.endPoint = this.vec2ToPathPoint(point);
-        this.move(this.startPoint, this.endPoint)
     }
 
     public onCompleteMove = (wasSuccessed: boolean, lastPoint: PathPoint): void => {
-        console.log(lastPoint);
-        if(wasSuccessed) {
-            
+        if (wasSuccessed) {
+            this.reset();
             return;
         }
-        this.move(lastPoint, this.endPoint)
+
+        if(!this.avoidObstacles) return;
+        
+        const newDynamicObjects = new Map(GlobalState.playerPositions);
+        newDynamicObjects.delete(this.playerId);
+
+        const startPoint: PathPoint = { i: lastPoint.i, j: lastPoint.j, cost: 0, heuristic: 0, total: 0 };
+        this.move(startPoint, this.endPoint, newDynamicObjects);
     }
 
-    private move(start: PathPoint, end: PathPoint) {
-        this.path = this.findPath(start, end);
+    public go() {
+        if(!this.startPoint || !this.endPoint) {
+            return;
+        }
+        this.move(this.startPoint, this.endPoint);
+    }
+
+    private move = (start: PathPoint, end: PathPoint, dynamicObjects?: Map<number, PathPoint>): void => {
+        this.path = this.findPath(start, end, dynamicObjects);
         
-        if(this.path) {
+        if (this.path) {
             console.log(this.path);
-            this.movementController.startMove(this.path, this.startPoint);
-            this.startPoint = null;
+            this.getComponent(MovementController).startMove(this.path, start);
         }
     }
     
-    private findPath = (start: PathPoint, end: PathPoint): PathPoint[] => {
-        return aStar(Facade.Grid, start, end, GlobalState.blockers);
+    private findPath = (start: PathPoint, end: PathPoint, dynamicObjects?: Map<number, PathPoint>): PathPoint[] => {
+        console.log(`Start: ${start.i},${start.j}, End: ${end.i},${end.j}`);
+        return aStar(GlobalState.Grid, start, end, GlobalState.blockers, dynamicObjects);
     }
     
     private vec2ToPathPoint = (vec: Vec2): PathPoint => {
@@ -68,9 +96,6 @@ export class PlayerComponent extends Component {
             cost: 0,
             heuristic: 0,
             total: 0
-        } ; 
+        }; 
     }
-
 }
-
-
